@@ -1,65 +1,201 @@
-import Image from "next/image";
+"use client"
+
+import { useState, useCallback, useRef } from "react"
+import { HeroSection } from "@/components/hero-section"
+import { UploadArea } from "@/components/upload-area"
+import { JobDescriptionInput } from "@/components/job-description-input"
+import { ProcessingScreen } from "@/components/processing-screen"
+import { ResultsScreen } from "@/components/results-screen"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Sparkles, ArrowRight } from "lucide-react"
+import type {
+  ProcessingStatus,
+  OptimizationResult,
+  ProcessingStage,
+} from "@/lib/types"
+
+type AppState = "input" | "processing" | "results"
 
 export default function Home() {
+  const [state, setState] = useState<AppState>("input")
+  const [file, setFile] = useState<File | null>(null)
+  const [jobDescription, setJobDescription] = useState("")
+  const [processingStatus, setProcessingStatus] =
+    useState<ProcessingStatus | null>(null)
+  const [result, setResult] = useState<OptimizationResult | null>(null)
+  const [pdfBase64, setPdfBase64] = useState<string | null>(null)
+  const [downloading, setDownloading] = useState(false)
+  const abortRef = useRef<AbortController | null>(null)
+
+  const handleSubmit = useCallback(async () => {
+    if (!file || !jobDescription.trim()) return
+
+    setState("processing")
+    setProcessingStatus({
+      stage: "extracting",
+      progress: 0,
+      message: "Iniciando...",
+    })
+
+    const controller = new AbortController()
+    abortRef.current = controller
+
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("jobDescription", jobDescription)
+
+      const response = await fetch("/api/optimize", {
+        method: "POST",
+        body: formData,
+        signal: controller.signal,
+      })
+
+      if (!response.ok) {
+        throw new Error(`Error del servidor: ${response.status}`)
+      }
+
+      const reader = response.body?.getReader()
+      if (!reader) throw new Error("No se pudo leer la respuesta")
+
+      const decoder = new TextDecoder()
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value)
+        const lines = chunk.split("\n")
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue
+          const data = JSON.parse(line.slice(6))
+
+          if (data.stage === "error") {
+            throw new Error(data.error || "Error desconocido")
+          }
+
+          if (data.stage === "done") {
+            setResult(data.result)
+            setPdfBase64(data.pdfBase64)
+            setProcessingStatus({
+              stage: "done",
+              progress: 100,
+              message: "¡Optimización completada!",
+            })
+            setState("results")
+            return
+          }
+
+          setProcessingStatus({
+            stage: data.stage as ProcessingStage,
+            progress: data.progress,
+            message: data.message,
+          })
+        }
+      }
+    } catch (err) {
+      if ((err as Error).name === "AbortError") {
+        setState("input")
+        return
+      }
+      setProcessingStatus({
+        stage: "error",
+        progress: 0,
+        message: (err as Error).message || "Error de conexión",
+      })
+    }
+  }, [file, jobDescription])
+
+  const handleDownload = useCallback(async () => {
+    if (!pdfBase64) return
+    setDownloading(true)
+    try {
+      const byteCharacters = atob(pdfBase64)
+      const byteNumbers = new Array(byteCharacters.length)
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i)
+      }
+      const byteArray = new Uint8Array(byteNumbers)
+      const blob = new Blob([byteArray], { type: "application/pdf" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = "CV_Optimizado.pdf"
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } finally {
+      setDownloading(false)
+    }
+  }, [pdfBase64])
+
+  const handleReset = useCallback(() => {
+    setFile(null)
+    setJobDescription("")
+    setProcessingStatus(null)
+    setResult(null)
+    setPdfBase64(null)
+    setState("input")
+    abortRef.current?.abort()
+  }, [])
+
+  const isValid = file !== null && jobDescription.trim().length > 0
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+    <main className="flex-1 flex flex-col">
+      <div className="max-w-3xl mx-auto w-full px-4 py-8 space-y-8">
+        <HeroSection />
+
+        {state === "input" && (
+          <Card>
+            <CardContent className="space-y-6 pt-6">
+              <UploadArea
+                onFileSelect={setFile}
+                file={file}
+                disabled={false}
+              />
+
+              <JobDescriptionInput
+                value={jobDescription}
+                onChange={setJobDescription}
+                disabled={false}
+              />
+
+              <Button
+                onClick={handleSubmit}
+                disabled={!isValid}
+                size="lg"
+                className="w-full"
+              >
+                <Sparkles className="size-4" />
+                Analizar CV
+                <ArrowRight className="size-4" />
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {state === "processing" && processingStatus && (
+          <Card>
+            <CardContent>
+              <ProcessingScreen status={processingStatus} />
+            </CardContent>
+          </Card>
+        )}
+
+        {state === "results" && result && (
+          <ResultsScreen
+            result={result}
+            fileName={file?.name || "CV"}
+            onDownload={handleDownload}
+            onReset={handleReset}
+            downloading={downloading}
+          />
+        )}
+      </div>
+    </main>
+  )
 }

@@ -19,20 +19,20 @@ import type { OptimizationResult } from "@/lib/types"
 
 function ScoreBar({ score, label }: { score: number; label: string }) {
   const getColor = (s: number) => {
-    if (s >= 80) return "bg-green-500"
-    if (s >= 60) return "bg-yellow-500"
-    return "bg-red-500"
+    if (s >= 80) return "bg-[#22D66E]"
+    if (s >= 60) return "bg-[#1E88FF]"
+    return "bg-[#EF4444]"
   }
 
   return (
     <div className="space-y-1.5">
-      <div className="flex justify-between text-sm">
-        <span className="font-medium">{label}</span>
-        <span className="font-bold tabular-nums">{score}%</span>
+      <div className="flex justify-between text-xs">
+        <span className="text-muted-foreground">{label}</span>
+        <span className="font-mono font-bold tabular-nums">{score}%</span>
       </div>
-      <div className="h-3 rounded-full bg-muted overflow-hidden">
+      <div className="h-2 rounded-full bg-secondary overflow-hidden">
         <div
-          className={`h-full rounded-full transition-all duration-1000 ${getColor(score)}`}
+          className={`h-full rounded-full transition-[width] duration-1000 ${getColor(score)}`}
           style={{ width: `${score}%` }}
         />
       </div>
@@ -53,34 +53,26 @@ function ComparisonCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <TrendingUp className="size-4" />
-          Comparativa
+        <CardTitle className="flex items-center gap-2 text-sm font-medium">
+          <TrendingUp className="size-4" aria-hidden="true" />
+          Comparativa de Score ATS
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="text-center p-3 rounded-lg bg-muted/50">
-            <p className="text-xs text-muted-foreground mb-1">Score Inicial</p>
-            <p className="text-2xl font-bold">{initialScore}%</p>
-          </div>
-          <div className="text-center p-3 rounded-lg bg-muted/50">
-            <p className="text-xs text-muted-foreground mb-1">Score Final</p>
-            <p className="text-2xl font-bold text-green-600">{finalScore}%</p>
-          </div>
-        </div>
-        <div className="flex items-center justify-center gap-2 text-sm">
+        <ScoreBar score={initialScore} label="Score inicial" />
+        <ScoreBar score={finalScore} label="Score final" />
+        <div className="flex items-center justify-center gap-1.5 text-sm pt-1">
           {isPositive ? (
             <>
-              <ArrowUp className="size-4 text-green-500" />
-              <span className="font-semibold text-green-600">
-                Mejora de +{improvement} puntos
+              <ArrowUp className="size-4 text-green-500" aria-hidden="true" />
+              <span className="font-medium text-green-500">
+                +{improvement} puntos de mejora
               </span>
             </>
           ) : (
             <>
-              <ArrowDown className="size-4 text-red-500" />
-              <span className="font-semibold text-red-600">
+              <ArrowDown className="size-4 text-red-500" aria-hidden="true" />
+              <span className="font-medium text-red-500">
                 {improvement} puntos
               </span>
             </>
@@ -108,15 +100,15 @@ function KeywordList({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Icon className="size-4" />
+        <CardTitle className="flex items-center gap-2 text-sm font-medium">
+          <Icon className="size-4" aria-hidden="true" />
           {title}
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5">
           {keywords.map((kw, i) => (
-            <Badge key={i} variant={variant}>
+            <Badge key={i} variant={variant} className="text-[11px]">
               {kw}
             </Badge>
           ))}
@@ -138,15 +130,15 @@ function RedFlagList({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <AlertTriangle className="size-4 text-destructive" />
+        <CardTitle className="flex items-center gap-2 text-sm font-medium">
+          <AlertTriangle className="size-4 text-destructive" aria-hidden="true" />
           {title}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="space-y-1.5">
         {flags.map((flag, i) => (
-          <div key={i} className="flex items-start gap-2 text-sm">
-            <XCircle className="size-4 text-destructive shrink-0 mt-0.5" />
+          <div key={i} className="flex items-start gap-2 text-xs">
+            <XCircle className="size-3.5 text-destructive shrink-0 mt-0.5" aria-hidden="true" />
             <span>{flag}</span>
           </div>
         ))}
@@ -161,15 +153,15 @@ function ImprovementList({ items }: { items: string[] }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <ListChecks className="size-4 text-green-500" />
+        <CardTitle className="flex items-center gap-2 text-sm font-medium">
+          <ListChecks className="size-4 text-green-500" aria-hidden="true" />
           Mejoras Realizadas
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="space-y-1.5">
         {items.map((item, i) => (
-          <div key={i} className="flex items-start gap-2 text-sm">
-            <CheckCircle2 className="size-4 text-green-500 shrink-0 mt-0.5" />
+          <div key={i} className="flex items-start gap-2 text-xs">
+            <CheckCircle2 className="size-3.5 text-green-500 shrink-0 mt-0.5" aria-hidden="true" />
             <span>{item}</span>
           </div>
         ))}
@@ -204,26 +196,13 @@ export function ResultsScreen({
   ).length
 
   return (
-    <div className="space-y-8">
-      <div className="text-center space-y-2">
-        <div className="inline-flex items-center justify-center size-14 rounded-full bg-green-100 dark:bg-green-900/20 mb-2">
-          <CheckCircle2 className="size-7 text-green-600" />
+    <div className="space-y-6">
+      <div className="text-center space-y-1">
+        <div className="size-10 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-2">
+          <CheckCircle2 className="size-5 text-green-500" aria-hidden="true" />
         </div>
-        <h2 className="text-2xl font-bold">Optimización Completa</h2>
-        <p className="text-muted-foreground">
-          Tu CV ha sido analizado y optimizado para: {fileName}
-        </p>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <ScoreBar
-          score={initial_analysis.compatibility_score}
-          label="Score ATS Inicial"
-        />
-        <ScoreBar
-          score={final_analysis.compatibility_score}
-          label="Score ATS Final"
-        />
+        <h2 className="text-lg font-semibold">Optimización Completa</h2>
+        <p className="text-xs text-muted-foreground">{fileName}</p>
       </div>
 
       <ComparisonCard
@@ -231,23 +210,23 @@ export function ResultsScreen({
         finalScore={final_analysis.compatibility_score}
       />
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2">
         <KeywordList
           keywords={initial_analysis.missing_keywords}
-          title="Keywords Faltantes (Inicial)"
+          title="Keywords faltantes (inicial)"
           icon={Target}
           variant="destructive"
         />
         <KeywordList
           keywords={final_analysis.missing_keywords}
-          title="Keywords Aún Faltantes"
+          title="Keywords aún faltantes"
           icon={Target}
           variant="default"
         />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <RedFlagList flags={initial_analysis.red_flags} title="Red Flags Detectadas" />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <RedFlagList flags={initial_analysis.red_flags} title="Red flags detectadas" />
         {final_audit.improvements.length > 0 && (
           <ImprovementList items={final_audit.improvements} />
         )}
@@ -255,40 +234,38 @@ export function ResultsScreen({
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <RefreshCw className="size-4" />
-            Resumen Ejecutivo
+          <CardTitle className="flex items-center gap-2 text-sm font-medium">
+            <RefreshCw className="size-4" aria-hidden="true" />
+            Resumen
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3 text-sm">
-          <div className="grid grid-cols-3 gap-3 text-center">
-            <div className="p-3 rounded-lg bg-muted/50">
-              <p className="text-xs text-muted-foreground">Mejora</p>
-              <p className="text-lg font-bold text-green-600">
+        <CardContent className="text-xs text-muted-foreground space-y-3">
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="p-2 rounded bg-secondary">
+              <p className="text-[10px] text-muted-foreground/60">Mejora</p>
+              <p className="text-sm font-bold font-mono tabular-nums text-green-500">
                 +{improvement} pts
               </p>
             </div>
-            <div className="p-3 rounded-lg bg-muted/50">
-              <p className="text-xs text-muted-foreground">Keywords Agregadas</p>
-              <p className="text-lg font-bold">{keywordsAdded}</p>
+            <div className="p-2 rounded bg-secondary">
+              <p className="text-[10px] text-muted-foreground/60">Keywords</p>
+              <p className="text-sm font-bold font-mono tabular-nums">{keywordsAdded}</p>
             </div>
-            <div className="p-3 rounded-lg bg-muted/50">
-              <p className="text-xs text-muted-foreground">Red Flags Corregidas</p>
-              <p className="text-lg font-bold">{redFlagsCorrected}</p>
+            <div className="p-2 rounded bg-secondary">
+              <p className="text-[10px] text-muted-foreground/60">Red flags</p>
+              <p className="text-sm font-bold font-mono tabular-nums">{redFlagsCorrected}</p>
             </div>
           </div>
-          <p className="text-muted-foreground mt-2">
-            {initial_analysis.summary}
-          </p>
+          <p>{initial_analysis.summary}</p>
         </CardContent>
       </Card>
 
-      <div className="flex flex-col sm:flex-row gap-3 justify-center">
-        <Button onClick={onDownload} disabled={downloading} size="lg">
-          <Download className="size-4" />
-          {downloading ? "Generando..." : "Descargar CV Optimizado"}
+      <div className="flex flex-col sm:flex-row gap-2 justify-center">
+        <Button onClick={onDownload} disabled={downloading}>
+          <Download className="size-4" aria-hidden="true" />
+          {downloading ? "Generando\u2026" : "Descargar CV Optimizado"}
         </Button>
-        <Button onClick={onReset} variant="outline" size="lg">
+        <Button onClick={onReset} variant="outline">
           Analizar otro CV
         </Button>
       </div>

@@ -1,22 +1,12 @@
-import { FileText, Sparkles } from "lucide-react"
-
 export function HeroSection() {
   return (
-    <div className="text-center space-y-4 py-12">
-      <div className="inline-flex items-center justify-center size-16 rounded-2xl bg-primary/10 mb-2">
-        <Sparkles className="size-8 text-primary" />
-      </div>
-      <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
-        ATS Resume Optimizer
+    <div className="text-center space-y-1">
+      <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-balance bg-gradient-to-r from-[#1E88FF] via-[#22C1FF] to-[#22D66E] bg-clip-text text-transparent">
+        Optimizador ATS
       </h1>
-      <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-        Optimiza tu CV para superar filtros ATS y aumentar tus posibilidades de
-        conseguir entrevistas.
+      <p className="text-sm text-muted-foreground">
+        Analiza, reescribe y optimiza tu CV para cada vacante
       </p>
-      <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-        <FileText className="size-4" />
-        <span>Sin registro · Sin almacenamiento · Resultados instantáneos</span>
-      </div>
     </div>
   )
 }

@@ -15,17 +15,20 @@ export function JobDescriptionInput({
 }: JobDescriptionInputProps) {
   return (
     <div className="space-y-2">
-      <label className="text-sm font-medium">
+      <label htmlFor="job-description" className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
         Descripción del Puesto
       </label>
       <Textarea
-        placeholder="Pega aquí la descripción del puesto de trabajo..."
+        id="job-description"
+        placeholder="Pega aquí la descripción de la vacante"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
-        className="min-h-[300px] resize-y"
+        className="min-h-[180px] resize-y text-sm"
+        name="job-description"
+        autoComplete="off"
       />
-      <p className="text-xs text-muted-foreground text-right">
+      <p className="text-[10px] text-muted-foreground/40 text-right">
         {value.length} caracteres
       </p>
     </div>

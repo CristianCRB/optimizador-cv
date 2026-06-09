@@ -16,8 +16,6 @@ export function UploadArea({ onFileSelect, file, disabled }: UploadAreaProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const dropRef = useRef<HTMLDivElement>(null)
 
-
-
   const isValidPDF = useCallback((f: File) => {
     const isPDF =
       f.type === "application/pdf" ||
@@ -88,10 +86,14 @@ export function UploadArea({ onFileSelect, file, disabled }: UploadAreaProps) {
 
   return (
     <div className="space-y-2">
-      <label className="text-sm font-medium">Curriculum Vitae (PDF)</label>
+      <label htmlFor="cv-upload" className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+        Curriculum Vitae
+      </label>
       {file ? (
-        <div className="flex items-center gap-3 p-4 rounded-lg border bg-muted/30">
-          <File className="size-5 text-primary shrink-0" />
+        <div className="flex items-center gap-3 p-3 rounded-lg border bg-card">
+          <div className="size-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+            <File className="size-4 text-primary" aria-hidden="true" />
+          </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">{file.name}</p>
             <p className="text-xs text-muted-foreground">
@@ -101,42 +103,48 @@ export function UploadArea({ onFileSelect, file, disabled }: UploadAreaProps) {
           <button
             type="button"
             onClick={() => { setError(null); onFileSelect(null) }}
-            className="size-6 flex items-center justify-center rounded-md hover:bg-muted transition-colors"
+            className="size-6 flex items-center justify-center rounded hover:bg-muted transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
             disabled={disabled}
+            aria-label="Eliminar archivo"
           >
-            <X className="size-4" />
+            <X className="size-3.5" aria-hidden="true" />
           </button>
         </div>
       ) : (
         <div
           ref={dropRef}
           className={cn(
-            "relative flex flex-col items-center justify-center gap-2 p-8 rounded-lg border-2 border-dashed transition-colors cursor-pointer hover:border-primary/50",
-            dragOver && "border-primary bg-primary/5",
+            "relative flex flex-col items-center justify-center gap-3 p-6 rounded-lg border border-dashed transition-all cursor-pointer select-none",
+            "border-[#1F2937] hover:border-[#1E88FF]/40 hover:bg-[#1E88FF]/[0.02]",
+            dragOver && "border-[#1E88FF] bg-[#1E88FF]/[0.03] scale-[1.01]",
             disabled && "opacity-50 cursor-not-allowed"
           )}
+          style={{ touchAction: "manipulation" }}
         >
-          <Upload className="size-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">
-            Arrastra tu PDF aquí o{" "}
-            <span className="text-primary font-medium">
-              selecciona un archivo
-            </span>
+          <div className="size-10 rounded-xl bg-[#1E88FF]/10 flex items-center justify-center">
+            <Upload className="size-5 text-[#1E88FF]" aria-hidden="true" />
+          </div>
+          <p className="text-xs text-muted-foreground text-center">
+            Arrastra o{" "}
+            <span className="text-[#1E88FF] font-medium">selecciona</span> tu PDF
           </p>
-          <p className="text-xs text-muted-foreground">PDF hasta 10MB</p>
+          <p className="text-[10px] text-muted-foreground/40">PDF hasta 10MB</p>
           <input
             ref={inputRef}
+            id="cv-upload"
             type="file"
             accept=".pdf,application/pdf"
             onChange={handleChange}
             className="absolute inset-0 opacity-0 cursor-pointer"
             disabled={disabled}
+            name="cv-file"
+            autoComplete="off"
           />
         </div>
       )}
       {error && (
-        <div className="flex items-center gap-2 text-sm text-destructive">
-          <AlertCircle className="size-4" />
+        <div className="flex items-center gap-1.5 text-xs text-destructive" role="alert">
+          <AlertCircle className="size-3.5" aria-hidden="true" />
           <span>{error}</span>
         </div>
       )}

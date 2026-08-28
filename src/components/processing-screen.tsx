@@ -1,27 +1,12 @@
 "use client"
 
 import { Progress } from "@/components/ui/progress"
-import {
-  FileText,
-  Search,
-  PenLine,
-  ClipboardCheck,
-  FileDown,
-  BarChart3,
-  Loader2,
-} from "lucide-react"
+import { FileText, Brain, Loader2 } from "lucide-react"
 import type { ProcessingStatus } from "@/lib/types"
 
-const stageConfig: Record<
-  string,
-  { label: string; icon: typeof Loader2 }
-> = {
+const stageConfig: Record<string, { label: string; icon: typeof Loader2 }> = {
   extracting: { label: "Extrayendo texto del PDF", icon: FileText },
-  analyzing: { label: "Analizando compatibilidad ATS", icon: Search },
-  rewriting: { label: "Reescribiendo experiencia profesional", icon: PenLine },
-  auditing: { label: "Ejecutando auditoría ATS", icon: ClipboardCheck },
-  generating: { label: "Generando PDF optimizado", icon: FileDown },
-  calculating: { label: "Calculando score final", icon: BarChart3 },
+  evaluating: { label: "Analizando CV con IA", icon: Brain },
 }
 
 interface ProcessingScreenProps {

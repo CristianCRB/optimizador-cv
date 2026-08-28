@@ -1,13 +1,7 @@
 import { NextRequest } from "next/server"
-import { extractTextFromPDF, parseResumeText } from "@/lib/pdf-utils"
-import { atsAnalysisSkill } from "@/lib/skills/ats-analysis"
-import { resumeRewriterSkill } from "@/lib/skills/resume-rewriter"
-import { finalATSAuditSkill } from "@/lib/skills/final-ats-audit"
-import { generatePDF } from "@/lib/pdf-generator"
-import type {
-  ProcessingStage,
-  OptimizationResult,
-} from "@/lib/types"
+import { extractStructuredMarkdown } from "@/lib/pdf-utils"
+import { cvEvaluationSkill } from "@/lib/skills/cv-evaluation"
+import type { ProcessingStage } from "@/lib/types"
 
 export const runtime = "nodejs"
 export const maxDuration = 180
@@ -48,171 +42,60 @@ export async function POST(req: NextRequest) {
           // Step 1: Extract PDF text
           controller.enqueue(
             encoder.encode(
-              statusEvent("extracting", 5, "Leyendo archivo PDF...")
+              statusEvent("extracting", 10, "Leyendo archivo PDF...")
             )
           )
 
           const arrayBuffer = await file.arrayBuffer()
           const buffer = Buffer.from(arrayBuffer)
-          const rawText = await extractTextFromPDF(buffer)
-          const resume = parseResumeText(rawText)
+          const structured = await extractStructuredMarkdown(buffer)
 
-          controller.enqueue(
-            encoder.encode(
-              statusEvent("extracting", 10, "Texto extraído correctamente")
+          if (structured.isScannedHint) {
+            throw new Error(
+              "Este PDF parece estar escaneado (no contiene texto seleccionable). Asegúrate de usar un CV con texto real para poder analizarlo."
             )
-          )
-
-          // Step 2: Initial ATS Analysis (Skill 1)
-          controller.enqueue(
-            encoder.encode(
-              statusEvent("analyzing", 20, "Comparando CV vs vacante...")
-            )
-          )
-
-          const initialAnalysis = await atsAnalysisSkill(rawText, jobDescription)
-
-          controller.enqueue(
-            encoder.encode(
-              statusEvent(
-                "analyzing",
-                30,
-                `Score inicial: ${initialAnalysis.compatibility_score}%`
-              )
-            )
-          )
-
-          // Step 3: Resume Rewriter (Skill 2)
-          controller.enqueue(
-            encoder.encode(
-              statusEvent("rewriting", 40, "Reescribiendo con fórmula XYZ...")
-            )
-          )
-
-          const optimizedResumeText = await resumeRewriterSkill(
-            rawText,
-            initialAnalysis.missing_keywords,
-            initialAnalysis.red_flags,
-            initialAnalysis.compatibility_score
-          )
-
-          controller.enqueue(
-            encoder.encode(
-              statusEvent("rewriting", 50, "Experiencia optimizada")
-            )
-          )
-
-          // Step 4: Final ATS Audit (Skill 3)
-          controller.enqueue(
-            encoder.encode(
-              statusEvent("auditing", 60, "Ejecutando auditoría final...")
-            )
-          )
-
-          const auditResult = await finalATSAuditSkill(
-            optimizedResumeText,
-            initialAnalysis.compatibility_score,
-            initialAnalysis.missing_keywords
-          )
-
-          controller.enqueue(
-            encoder.encode(
-              statusEvent("auditing", 70, "Auditoría completada")
-            )
-          )
-
-          const finalText = auditResult.final_resume || optimizedResumeText
-
-          // Step 5: Evaluate final score
-          controller.enqueue(
-            encoder.encode(
-              statusEvent("calculating", 75, "Evaluando score ATS final...")
-            )
-          )
-
-          let finalAnalysis = await atsAnalysisSkill(finalText, jobDescription)
-
-          // Feedloop: if score dropped, do a corrective pass
-          if (finalAnalysis.compatibility_score < initialAnalysis.compatibility_score) {
-            controller.enqueue(
-              encoder.encode(
-                statusEvent(
-                  "auditing",
-                  80,
-                  `Score bajó (${finalAnalysis.compatibility_score}% vs ${initialAnalysis.compatibility_score}%). Reincorporando keywords...`
-                )
-              )
-            )
-
-            const correctedResume = await resumeRewriterSkill(
-              finalText,
-              initialAnalysis.missing_keywords,
-              [],
-              initialAnalysis.compatibility_score
-            )
-
-            const reAudit = await finalATSAuditSkill(
-              correctedResume,
-              initialAnalysis.compatibility_score,
-              initialAnalysis.missing_keywords
-            )
-
-            const correctedFinalText =
-              reAudit.final_resume || correctedResume
-
-            // Re-evaluate one more time
-            const correctedScore = await atsAnalysisSkill(
-              correctedFinalText,
-              jobDescription
-            )
-
-            // Use whichever text gives the higher score
-            if (correctedScore.compatibility_score > finalAnalysis.compatibility_score) {
-              finalAnalysis = correctedScore
-              auditResult.final_resume = correctedFinalText
-            }
           }
 
           controller.enqueue(
             encoder.encode(
-              statusEvent(
-                "calculating",
-                85,
-                `Score final: ${finalAnalysis.compatibility_score}%`
-              )
+              statusEvent("extracting", 30, "Texto extraído correctamente")
             )
           )
 
-          const finalResumeText =
-            auditResult.final_resume || finalText
-
-          // Step 6: Generate PDF
+          // Step 2: Evaluate with Gemini (single call)
           controller.enqueue(
             encoder.encode(
-              statusEvent("generating", 90, "Generando PDF optimizado...")
+              statusEvent("evaluating", 40, "Analizando CV con IA...")
             )
           )
 
-          const pdfBuffer = await generatePDF(resume, finalResumeText)
+          const result = await cvEvaluationSkill(
+            structured.markdown,
+            jobDescription
+          )
 
           controller.enqueue(
             encoder.encode(
-              statusEvent("generating", 95, "PDF generado correctamente")
+              statusEvent("evaluating", 80, "Análisis completado")
             )
           )
 
-          // Step 7: Send complete result
-          const result: OptimizationResult = {
-            initial_analysis: initialAnalysis,
-            optimized_resume: optimizedResumeText,
-            final_audit: auditResult,
-            final_analysis: finalAnalysis,
-          }
-
-          const pdfBase64 = pdfBuffer.toString("base64")
+          // Step 3: Send complete result
+          controller.enqueue(
+            encoder.encode(
+              statusEvent("evaluating", 90, "Preparando resultados...")
+            )
+          )
 
           controller.enqueue(
-            encoder.encode(completeEvent({ result, pdfBase64 }))
+            encoder.encode(
+              completeEvent({
+                result: result.evaluation,
+                usage: result.usage,
+                countedPromptTokens: result.countedPromptTokens,
+                charCount: structured.charCount,
+              })
+            )
           )
 
           controller.close()

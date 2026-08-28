@@ -23,13 +23,15 @@ export function ScoreRing({
   const offset = circumference - (clampedScore / 100) * circumference
 
   const getColor = (s: number) => {
-    if (s >= 80) return "stroke-[#0F766E]"
+    if (s >= 90) return "stroke-[#22D66E]"
+    if (s >= 80) return "stroke-[#1E88FF]"
     if (s >= 60) return "stroke-amber-500"
     return "stroke-red-500"
   }
 
   const getTextColor = (s: number) => {
-    if (s >= 80) return "text-[#0F766E]"
+    if (s >= 90) return "text-[#22D66E]"
+    if (s >= 80) return "text-[#1E88FF]"
     if (s >= 60) return "text-amber-600"
     return "text-red-600"
   }

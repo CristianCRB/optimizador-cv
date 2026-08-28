@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useRef } from "react"
+import { useState, useCallback, useRef, useMemo } from "react"
 import { HeroSection } from "@/components/hero-section"
 import { UploadArea } from "@/components/upload-area"
 import { JobDescriptionInput } from "@/components/job-description-input"
@@ -8,13 +8,28 @@ import { ProcessingScreen } from "@/components/processing-screen"
 import { ResultsScreen } from "@/components/results-screen"
 import { Button } from "@/components/ui/button"
 import { Sparkles } from "lucide-react"
+import {
+  appendUsage,
+  buildSessionSummary,
+  loadUsageHistory,
+  makeUsageId,
+} from "@/lib/local-usage-store"
 import type {
   ProcessingStatus,
-  OptimizationResult,
+  CVEvaluation,
   ProcessingStage,
+  GeminiUsage,
+  AnalysisUsage,
+  UsageSessionSummary,
 } from "@/lib/types"
 
 type AppState = "input" | "processing" | "results"
+
+interface LastUsage {
+  usage: GeminiUsage | null
+  countedPromptTokens: number
+  charCount: number
+}
 
 export default function Home() {
   const [state, setState] = useState<AppState>("input")
@@ -22,15 +37,19 @@ export default function Home() {
   const [jobDescription, setJobDescription] = useState("")
   const [processingStatus, setProcessingStatus] =
     useState<ProcessingStatus | null>(null)
-  const [result, setResult] = useState<OptimizationResult | null>(null)
-  const [pdfBase64, setPdfBase64] = useState<string | null>(null)
-  const [downloading, setDownloading] = useState(false)
+  const [result, setResult] = useState<CVEvaluation | null>(null)
+  const [lastUsage, setLastUsage] = useState<LastUsage | null>(null)
+  const [sessionSummary, setSessionSummary] =
+    useState<UsageSessionSummary | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
+  const [uploadDate] = useState(() => new Date())
+  const startTimeRef = useRef<number>(0)
 
   const handleSubmit = useCallback(async () => {
     if (!file || !jobDescription.trim() || submitting) return
 
+    startTimeRef.current = performance.now()
     setSubmitting(true)
     setState("processing")
     setProcessingStatus({
@@ -61,29 +80,61 @@ export default function Home() {
       if (!reader) throw new Error("No se pudo leer la respuesta")
 
       const decoder = new TextDecoder()
+      let buffer = ""
 
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
 
-        const chunk = decoder.decode(value)
-        const lines = chunk.split("\n")
+        buffer += decoder.decode(value, { stream: true })
 
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue
-          const data = JSON.parse(line.slice(6))
+        let boundary
+        while ((boundary = buffer.indexOf("\n\n")) !== -1) {
+          const event = buffer.slice(0, boundary)
+          buffer = buffer.slice(boundary + 2)
+          for (const line of event.split("\n")) {
+            if (!line.startsWith("data: ")) continue
+            const data = JSON.parse(line.slice(6))
 
           if (data.stage === "error") {
             throw new Error(data.error || "Error desconocido")
           }
 
           if (data.stage === "done") {
+            const usage = data.usage ?? null
+            const countedPromptTokens = data.countedPromptTokens ?? 0
+            const charCount = data.charCount ?? 0
+
             setResult(data.result)
-            setPdfBase64(data.pdfBase64)
+            setLastUsage({
+              usage,
+              countedPromptTokens,
+              charCount,
+            })
+
+            const record: AnalysisUsage = {
+              id: makeUsageId(),
+              fileName: file?.name || "CV",
+              timestamp: new Date().toISOString(),
+              promptTokenCount: usage?.promptTokenCount ?? 0,
+              candidatesTokenCount: usage?.candidatesTokenCount ?? 0,
+              totalTokenCount: usage?.totalTokenCount ?? 0,
+              countedPromptTokens,
+              model: usage?.modelVersion ?? "desconocido",
+              charCount,
+              durationMs: Math.round(
+                performance.now() - startTimeRef.current
+              ),
+              overallScore: data.result?.overall_score ?? 0,
+            }
+
+            const updated = appendUsage(record)
+            setSessionSummary(buildSessionSummary(updated))
+
             setProcessingStatus({
               stage: "done",
               progress: 100,
-              message: "\u00a1Optimizaci\u00f3n completada!",
+              message: "\u00a1An\u00e1lisis completado!",
             })
             setState("results")
             setSubmitting(false)
@@ -95,6 +146,7 @@ export default function Home() {
             progress: data.progress,
             message: data.message,
           })
+          }
         }
       }
     } catch (err) {
@@ -112,40 +164,22 @@ export default function Home() {
     }
   }, [file, jobDescription, submitting])
 
-  const handleDownload = useCallback(async () => {
-    if (!pdfBase64) return
-    setDownloading(true)
-    try {
-      const byteCharacters = atob(pdfBase64)
-      const byteNumbers = new Array(byteCharacters.length)
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i)
-      }
-      const byteArray = new Uint8Array(byteNumbers)
-      const blob = new Blob([byteArray], { type: "application/pdf" })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = "CV_Optimizado.pdf"
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-    } finally {
-      setDownloading(false)
-    }
-  }, [pdfBase64])
-
-  const handleReset = useCallback(() => {
+  const handleDelete = useCallback(() => {
     setFile(null)
     setJobDescription("")
     setProcessingStatus(null)
     setResult(null)
-    setPdfBase64(null)
     setState("input")
     setSubmitting(false)
     abortRef.current?.abort()
   }, [])
+
+  const initialSessionSummary = useMemo(
+    () => buildSessionSummary(loadUsageHistory()),
+    []
+  )
+
+  const usageSummary = sessionSummary ?? initialSessionSummary
 
   const isValid = file !== null && jobDescription.trim().length > 0
 
@@ -195,9 +229,10 @@ export default function Home() {
             <ResultsScreen
               result={result}
               fileName={file?.name || "CV"}
-              onDownload={handleDownload}
-              onReset={handleReset}
-              downloading={downloading}
+              uploadDate={uploadDate}
+              onDelete={handleDelete}
+              lastUsage={lastUsage}
+              usageSummary={usageSummary}
             />
           </div>
         </div>

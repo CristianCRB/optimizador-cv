@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Optimizador ATS de CV
 
-## Getting Started
+Aplicación web que permite cargar un CV en PDF, pegar la descripción de una vacante y recibir en segundos un análisis de compatibilidad con sistemas de seguimiento de candidatos (ATS), junto con recomendaciones accionables de mejora.
 
-First, run the development server:
+El producto usa la IA de Google Gemini para extraer datos del CV, compararlos contra la descripción del puesto y generar una evaluación cuantitativa y cualitativa.
+
+## Características
+
+- Subida de CV en PDF (hasta 10MB) con validación de tipo y tamaño.
+- Análisis con IA (Gemini) que puntúa el CV por dimensiones (habilidades, experiencia, educación, estructura).
+- **Desglose por apartados**: el CV se divide en secciones (encabezado, resumen, habilidades, experiencia, educación, certificaciones, formato) y cada una indica su estado (`ok` / `improve` / `critical`) con instrucciones concretas de dónde corregir y qué colocar.
+- **Extracción Markdown**: el PDF se convierte a Markdown estructurado (encabezados por sección) en el servidor antes de enviarlo a Gemini, para un input más limpio y de menor consumo.
+- **Medición de consumo de Gemini**: por cada consulta se miden los tokens usados, se valida el tamaño del prompt antes de enviar y se persiste un historial para comparar qué CVs consumen más/menos.
+- Progreso en tiempo real vía Server-Sent Events (SSE).
+- Tema claro/oscuro persistente.
+- Hasta 3 claves API de Gemini con rotación automática y reintento ante límite de cuota.
+
+> Nota de producto: la herramienta **no** genera ni descarga un CV optimizado. Su valor está en guiar al usuario sobre qué apartado del documento corregir y cómo redactarlo, todo en función de los filtros ATS.
+
+## Stack
+
+- **Framework**: Next.js 16 (App Router, Turbopack)
+- **UI**: React 19, componentes propios + shadcn/ui
+- **Estilos**: Tailwind CSS v4, `tw-animate-css`, CVA
+- **Extracción PDF**: `pdf-parse` (server-only)
+- **IA**: Google Gemini (`@google/generative-ai`, endpoints REST v1beta)
+- **Deploy**: Railway (Nixpacks)
+
+## Puesta en marcha
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abre [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Variables de entorno
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Copia `.env.example` a `.env.local` y completa las claves:
 
-## Learn More
+| Variable | Descripción |
+|---|---|
+| `GEMINI_API_KEY` | Clave principal de Gemini |
+| `GEMINI_API_KEY_2` | Clave secundaria (fallback) |
+| `GEMINI_API_KEY_3` | Clave terciaria (fallback) |
+| `GEMINI_MODEL` | Modelo a usar (default: `gemini-3.1-flash-lite`) |
 
-To learn more about Next.js, take a look at the following resources:
+Las claves viven solo en el servidor; el PDF se procesa en memoria y no se persiste.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Scripts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+pnpm dev       # servidor de desarrollo
+pnpm build     # build de producción
+pnpm start     # servidor de producción
+pnpm lint      # ESLint
+```
 
-## Deploy on Vercel
+## Documentación
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+El plan de producto y la arquitectura detallada están en [PRD.md](./PRD.md).

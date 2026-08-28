@@ -1,17 +1,14 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Moon, Sun } from "lucide-react"
 
 export function ThemeToggle() {
-  const [dark, setDark] = useState(true)
-
-  useEffect(() => {
-    const stored = localStorage.getItem("theme")
-    const prefersDark = stored === "dark" || (!stored && true)
-    setDark(prefersDark)
-    document.documentElement.classList.toggle("dark", prefersDark)
-  }, [])
+  const [dark, setDark] = useState<boolean>(() =>
+    typeof document === "undefined"
+      ? true
+      : !(localStorage.getItem("theme") === "light")
+  )
 
   const toggle = () => {
     const next = !dark
@@ -19,7 +16,7 @@ export function ThemeToggle() {
     document.documentElement.classList.toggle("dark", next)
     document.documentElement.style.colorScheme = next ? "dark" : "light"
     const meta = document.querySelector('meta[name="theme-color"]')
-    if (meta) meta.setAttribute("content", next ? "#0c0c12" : "#f7f7f5")
+    if (meta) meta.setAttribute("content", next ? "#070B14" : "#F8FAFC")
     localStorage.setItem("theme", next ? "dark" : "light")
   }
 
